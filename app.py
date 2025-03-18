@@ -2,9 +2,18 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 
-# Dataset laden
-file_path = "/mnt/data/Sociale impact CHATGPT.xlsx"
-df_cleaned = pd.read_excel(file_path, sheet_name='Blad1', skiprows=1)
+# Titel van de app
+st.title("📊 Social Impact Score Dashboard")
+st.write("Pas de gewichten aan en bekijk de impact op de Social Impact Score (SIS).")
+
+# Laden van dataset
+@st.cache_data
+def load_data():
+    file_path = "Sociale impact CHATGPT.xlsx"  # Zorg ervoor dat dit bestand in je repo staat
+    df = pd.read_excel(file_path, sheet_name='Blad1', skiprows=1)
+    return df
+
+df = load_data()
 
 # Kolommen corrigeren
 corrected_columns = [
@@ -14,8 +23,8 @@ corrected_columns = [
     "Aantal Kamers", "Energielabel", "WOZ-waarde", "Whooz-label", "Leeftijd",
     "Opleidingsniveau", "Gezinsgrootte", "Inkomen", "Woonlasten"
 ]
-df_cleaned.columns = corrected_columns
-df_cleaned = df_cleaned.drop(columns=["Fictieve data", "Onbekend1", "Item"])
+df.columns = corrected_columns
+df = df.drop(columns=["Fictieve data", "Onbekend1", "Item"])
 
 # Numerieke kolommen
 numeric_columns = [
@@ -24,11 +33,11 @@ numeric_columns = [
     "Woonoppervlakte", "Aantal Kamers", "WOZ-waarde", "Leeftijd", "Gezinsgrootte", "Inkomen", "Woonlasten"
 ]
 for col in numeric_columns:
-    df_cleaned[col] = pd.to_numeric(df_cleaned[col], errors="coerce")
+    df[col] = pd.to_numeric(df[col], errors="coerce")
 
-# Normalisatie
+# Normalisatie (0-1 schaal)
 for col in numeric_columns:
-    df_cleaned[col] = (df_cleaned[col] - df_cleaned[col].min()) / (df_cleaned[col].max() - df_cleaned[col].min())
+    df[col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
 
 # Standaardgewichten
 weights = {
@@ -49,19 +58,20 @@ weights = {
     "Woonlasten": -0.1
 }
 
-# Streamlit-app
-st.title("Social Impact Score Dashboard")
-st.write("Pas de gewichten aan en bekijk de impact op de score.")
-
-# Schuifregelaars voor gewichten
+# Interactieve gewichtsinstellingen met sliders
+st.sidebar.header("⚖️ Pas de gewichten aan")
 for col in weights.keys():
-    weights[col] = st.slider(f"{col}", min_value=-0.2, max_value=0.2, value=weights[col], step=0.05)
+    weights[col] = st.sidebar.slider(f"{col}", min_value=-0.2, max_value=0.2, value=weights[col], step=0.05)
 
 # Berekening Social Impact Score
-df_cleaned["Social Impact Score"] = sum(df_cleaned[col] * weights[col] for col in weights.keys())
+df["Social Impact Score"] = sum(df[col] * weights[col] for col in weights.keys())
 
-# Weergave
-st.dataframe(df_cleaned[["Social Impact Score"] + numeric_columns])
+# Weergave van resultaten
+st.subheader("📊 Resultaten")
+st.write("Hieronder zie je de berekende Social Impact Score per locatie.")
+st.dataframe(df[["Social Impact Score"] + numeric_columns])
 
-# Visualisatie
-st.bar_chart(df_cleaned["Social Impact Score"])
+# Grafiek van de Social Impact Score
+st.subheader("📈 Visualisatie van de Social Impact Score")
+st.bar_chart(df["Social Impact Score"])
+
